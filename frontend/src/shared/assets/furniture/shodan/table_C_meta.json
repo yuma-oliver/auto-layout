@@ -1,0 +1,7 @@
+{
+  "widthMm": 5140,
+  "rotationStepDeg": 90,
+  "clearanceMm": { "left": 300, "right": 300, "front": 600, "back": 300 },
+
+  "seats": 8 
+}

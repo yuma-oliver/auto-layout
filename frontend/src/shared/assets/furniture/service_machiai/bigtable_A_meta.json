@@ -1,0 +1,11 @@
+{
+  "widthMm": 2900,
+  "rotationStepDeg": 90,
+  "clearanceMm": { "left": 300, "right": 300, "front": 0, "back": 0 },
+
+  "price": 120000,
+  "displayName": "6人掛けテーブル",
+  "category": "table",
+
+  "seats": 6 
+}

@@ -1,0 +1,9 @@
+{
+  "widthMm": 1800,
+  "rotationStepDeg": 90,
+  "clearanceMm": { "left": 300, "right": 300, "front": 0, "back": 0 },
+  "clusterSimilar": true,
+  "group": "together",
+
+  "seats": 6 
+}
