@@ -27,6 +27,7 @@ import FurnitureLayoutLayer from "./layers/FurnitureLayoutLayer";
 import useWallsInteraction, {
   WALL_CLOSE_RADIUS_PX,
 } from "./hooks/useWallsInteraction";
+import { getAssetsForZoneLabel } from "../../utils/furnitureAssets";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 const { getDocument } = pdfjs;
@@ -232,7 +233,7 @@ function generateZonesForWall(wall, patternIndex) {
       stroke,
       strokeWidth: 2,
       draggable: true,
-      furnitureAssets: [],
+      furnitureAssets: getAssetsForZoneLabel(label),
       placementMode: "sequence",
       furnitureMetaMap: {},
       furnitureCounts: {},
@@ -706,7 +707,8 @@ const PdfViewer = forwardRef(function PdfViewer(
     setLabelDlgOpen(false);
     if (!pendingZoneId) return;
     const { fill, stroke } = styleForLabel(label);
-    onUpdateZone?.(pendingZoneId, { label, fill, stroke });
+    const furnitureAssets = getAssetsForZoneLabel(label);
+    onUpdateZone?.(pendingZoneId, { label, fill, stroke, furnitureAssets });
     onChangeSelectedIds?.([pendingZoneId]);
     setPendingZoneId(null);
   };

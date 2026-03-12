@@ -17,6 +17,12 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import AppsIcon from "@mui/icons-material/Apps";
 import ChairIcon from "@mui/icons-material/Chair";
 
+// Furniture assets
+import shodanTableA from "../../../shared/assets/furniture/shodan/table_A.png";
+import machiaiSofaA from "../../../shared/assets/furniture/machiai/sofa_A.png";
+import serviceTableA from "../../../shared/assets/furniture/service_machiai/bigtable_A.png";
+import jimuDeskA from "../../../shared/assets/furniture/jimu/desk_A.png";
+
 import useAppStore from "../../../store/useAppStore";
 import useConditionStore from "../../../store/useConditionStore";
 import useLayoutStore from "../../../store/useLayoutStore";
@@ -101,10 +107,10 @@ export default function LeftSidebar({ open = true, onToggle }) {
     const cx = W / 2;
     const cy = H / 2;
 
-    const z1 = { id: `z-shodan-${Date.now()}`, label: "商談エリア", x: 0, y: 0, width: cx, height: cy, fill: "rgba(220,0,0,0.28)", stroke: "rgba(220,0,0,0.9)" };
-    const z2 = { id: `z-machiai-${Date.now()}`, label: "待合エリア", x: cx, y: 0, width: cx, height: cy, fill: "rgba(0,170,80,0.28)", stroke: "rgba(0,170,80,0.9)" };
-    const z3 = { id: `z-service-${Date.now()}`, label: "サービス待合エリア", x: 0, y: cy, width: cx, height: cy, fill: "rgba(0,120,215,0.28)", stroke: "rgba(0,120,215,0.9)" };
-    const z4 = { id: `z-office-${Date.now()}`, label: "事務エリア", x: cx, y: cy, width: cx, height: cy, fill: "rgba(128,128,128,0.28)", stroke: "rgba(128,128,128,0.9)" };
+    const z1 = { id: `z-shodan-${Date.now()}`, label: "商談エリア", x: 0, y: 0, width: cx, height: cy, fill: "rgba(220,0,0,0.28)", stroke: "rgba(220,0,0,0.9)", furnitureAssets: [shodanTableA] };
+    const z2 = { id: `z-machiai-${Date.now()}`, label: "待合エリア", x: cx, y: 0, width: cx, height: cy, fill: "rgba(0,170,80,0.28)", stroke: "rgba(0,170,80,0.9)", furnitureAssets: [machiaiSofaA] };
+    const z3 = { id: `z-service-${Date.now()}`, label: "サービス待合エリア", x: 0, y: cy, width: cx, height: cy, fill: "rgba(0,120,215,0.28)", stroke: "rgba(0,120,215,0.9)", furnitureAssets: [serviceTableA] };
+    const z4 = { id: `z-office-${Date.now()}`, label: "事務エリア", x: cx, y: cy, width: cx, height: cy, fill: "rgba(128,128,128,0.28)", stroke: "rgba(128,128,128,0.9)", furnitureAssets: [jimuDeskA] };
 
     setZones([z1, z2, z3, z4]);
     clearLayoutItems();
@@ -131,19 +137,44 @@ export default function LeftSidebar({ open = true, onToggle }) {
       console.warn("API Error, falling back to mock", err);
       alert("バックエンド接続エラー。家具自動配置のデモ（モック）を実行します。");
       // mock items
-      const mockItems = zones.map(z => ({
-        zone_id: z.id,
-        items: [
-          {
-            image_url: "/assets/selectFurniture/shodan/table_A.png",
-            x: z.x + (z.width * 0.5),
-            y: z.y + (z.height * 0.5),
-            width: 1200,
-            height: 800,
-            rotation: 0
-          }
-        ]
-      }));
+      const mockItems = zones.map(z => {
+        let imageUrl = shodanTableA;
+        let w = 1800;
+        let h = 900;
+        
+        if (z.label?.includes("商談")) {
+           imageUrl = shodanTableA;
+           w = 1800;
+           h = 900;
+        } else if (z.label?.includes("サービス")) {
+           imageUrl = serviceTableA;
+           w = 2900;
+           h = 1200;
+        } else if (z.label?.includes("待合")) {
+           imageUrl = machiaiSofaA;
+           w = 4440;
+           h = 1400;
+        } else if (z.label?.includes("事務")) {
+           imageUrl = jimuDeskA;
+           w = 5370;
+           h = 1600;
+        }
+
+        // scale down dummy sizes simply if zone is too small to fit the real mm scale
+        return {
+          zone_id: z.id,
+          items: [
+            {
+              image_url: imageUrl,
+              x: z.x + (z.width * 0.5),
+              y: z.y + (z.height * 0.5),
+              width: w,
+              height: h,
+              rotation: 0
+            }
+          ]
+        };
+      });
       useLayoutStore.getState().setLayoutItems(mockItems);
     }
   };

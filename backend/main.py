@@ -18,7 +18,7 @@ app.add_middleware(
 
 # --- 入力データ定義 ---
 class Zone(BaseModel):
-    id: int
+    id: str
     x: float
     y: float
     width: float
@@ -27,7 +27,7 @@ class Zone(BaseModel):
     itemCount: Optional[int] = None
 
 class LayoutResponse(BaseModel):
-    zone_id: int
+    zone_id: str
     items: List[dict]
 
 # --- テストAPI ---
