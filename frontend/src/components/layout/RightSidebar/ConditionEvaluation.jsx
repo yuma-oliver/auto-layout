@@ -35,16 +35,16 @@ export default function ConditionEvaluation() {
         <EvalRow label="事務席数" req={requirements.officeSeats} placed={0} />
       </Stack>
 
-      <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 3, mb: 1 }}>エリア面積一覧</Typography>
+      <Typography variant="subtitle2" sx={{ fontWeight: "bold", mt: 3, mb: 1 }}>リア別配置アイテム数</Typography>
       <Stack spacing={1} sx={{ mb: 2 }}>
         {zones.length === 0 && <Typography variant="caption" color="text.secondary">ゾーニング未生成</Typography>}
         {zones.map((z) => {
-          // Assume width/height are mm. 1000mm = 1m. Area = (w*h)/1000000 sqm
-          const sqm = ((z.width * z.height) / 1000000).toFixed(1);
+          // Calculate placed items for this zone
+          const relatedItems = useLayoutStore.getState().layoutItems.find(r => r.zone_id === z.id)?.items || [];
           return (
             <Box key={z.id} sx={{ display: "flex", justifyContent: "space-between" }}>
               <Typography variant="body2">{z.label || "未設定"}</Typography>
-              <Typography variant="body2">{sqm} ㎡</Typography>
+              <Typography variant="body2">{relatedItems.length} 個</Typography>
             </Box>
           );
         })}

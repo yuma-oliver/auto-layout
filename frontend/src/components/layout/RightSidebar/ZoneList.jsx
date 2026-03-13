@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Box, Drawer, List, ListItemButton, ListItemText, Divider, Typography,
   Collapse, Stack, TextField, IconButton, MenuItem, Tooltip, InputAdornment,
-  Chip, Button, Avatar, Slider
+  Chip, Button, Avatar, Slider, Tabs, Tab
 } from "@mui/material";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
@@ -74,19 +74,8 @@ export default function ZoneList({
 }) {
   const { 
     zones, selectedIds, setSelectedIds, updateZone, deleteZone, 
-    saveAssetsForZone, zoneSelections
+    saveAssetsForZone, zoneSelections, plans, currentPlanId, savePlan, loadPlan, deletePlan
   } = useLayoutStore();
-
-  const handleExportPptx = useCallback(() => {
-    if (!zones.length) {
-      alert("ゾーンがありません。先にゾーンを作成してください。");
-      return;
-    }
-    exportPptxFromZones(zones, zoneSelections).catch((err) => {
-      console.error(err);
-      alert("PowerPoint 出力に失敗しました。コンソールを確認してください。");
-    });
-  }, [zones, zoneSelections]);
 
   const onSelect = (id, meta) => {
     if (meta?.shift) {
@@ -104,6 +93,25 @@ export default function ZoneList({
   );
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [newPlanName, setNewPlanName] = useState("");
+  const [planPanelHeight, setPlanPanelHeight] = useState(250);
+
+  const startDragPlanPanel = (e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = planPanelHeight;
+    const onMouseMove = (moveEvent) => {
+      const delta = startY - moveEvent.clientY;
+      setPlanPanelHeight(Math.max(100, Math.min(800, startH + delta)));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
 
   // === 全ゾーン共通の透明度（%）。fill も stroke も同じ値を適用 ===
   const [globalAlphaPct, setGlobalAlphaPct] = useState(28); // 既定 28%
@@ -176,47 +184,52 @@ export default function ZoneList({
               right: 0,
               top: toolbarH,
               height: `calc(100vh - ${toolbarH}px)`,
-              overflow: "auto",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
               borderLeft: "1px solid rgba(0,0,0,0.08)",
             };
           },
         }}
         open={open}
       >
-        {/* ヘッダー */}
-        <Box sx={{ p: 2, pb: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            ゾーンとレイアウト評価
-          </Typography>
-        </Box>
+        <Tabs value={tabIndex} onChange={(e, val) => setTabIndex(val)} variant="fullWidth" sx={{ minHeight: 48, flexShrink: 0, '& .MuiTab-root': { py: 1, minHeight: 48 } }}>
+          <Tab label="エリア設定" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }} />
+          <Tab label="評価" sx={{ fontWeight: 'bold', fontSize: '0.85rem' }} />
+        </Tabs>
+        <Divider />
 
-        {/* --- 評価コンポーネント --- */}
-        <ConditionEvaluation />
-        <Divider sx={{ my: 1 }} />
+        <Box sx={{ flex: 1, overflow: "auto" }}>
+          {tabIndex === 1 && (
+          <Box>
+            <ConditionEvaluation />
+          </Box>
+        )}
 
-
-        {/* ★ 全ゾーンの透明度（塗り & 枠線） */}
-        <Box sx={{ px: 2, pb: 1 }}>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            全ゾーンの透明度（塗り & 枠線）
-          </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Slider
-              size="small"
-              value={globalAlphaPct}
-              min={0}
-              max={100}
-              step={1}
-              onChange={(_, val) => setGlobalAlphaPct(val)}
-              onChangeCommitted={(_, val) => applyAlphaToAllZones(val)}
-              sx={{ flex: 1 }}
-            />
-            <Typography variant="body2" sx={{ width: 40, textAlign: "right" }}>
-              {globalAlphaPct}
-            </Typography>
-          </Stack>
-          <Divider sx={{ mt: 1.5 }} />
-        </Box>
+        {tabIndex === 0 && (
+          <Box>
+            {/* ★ 全ゾーンの透明度（塗り & 枠線） */}
+            <Box sx={{ px: 2, pt: 1, pb: 1 }}>
+              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: "bold" }}>
+                全ゾーンの透明度（塗り & 枠線）
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Slider
+                  size="small"
+                  value={globalAlphaPct}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onChange={(_, val) => setGlobalAlphaPct(val)}
+                  onChangeCommitted={(_, val) => applyAlphaToAllZones(val)}
+                  sx={{ flex: 1 }}
+                />
+                <Typography variant="body2" sx={{ width: 40, textAlign: "right" }}>
+                  {globalAlphaPct}%
+                </Typography>
+              </Stack>
+              <Divider sx={{ mt: 1.5 }} />
+            </Box>
 
         <List dense disablePadding>
           {zones.map((z) => {
@@ -344,33 +357,113 @@ export default function ZoneList({
               </Box>
             );
           })}
-        </List>
-
-      {/* --- 右サイドバー下部（フッター領域） --- */}
-        <Box sx={{
-          position: "sticky",
-          bottom: 0,
-          p: 2,
-          bgcolor: "background.paper",
-          borderTop: "1px solid",
-          borderColor: "divider",
-        }}>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleExportPptx}
-            disabled={zones.length === 0}
-          >
-            パワポ出力
-          </Button>
-          <Typography
-            variant="caption"
-            sx={{ mt: 0.5, display: "block", color: "text.secondary" }}
-          >
-            下部バーで選定した家具を、ゾーンごとに 3×5 のマス張りで
-            PowerPoint に出力します（public/assets/selectFurniture のみ対象）。
-          </Typography>
+            </List>
+          </Box>
+        )}
         </Box>
+
+        {/* --- 保存プラン領域 (ドラッグで高さ可変) --- */}
+        <Box 
+          onMouseDown={startDragPlanPanel}
+          sx={{ 
+            height: 8, 
+            cursor: "row-resize", 
+            bgcolor: "divider", 
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            '&:hover': { bgcolor: "primary.main" },
+            transition: 'background-color 0.2s',
+          }} 
+        >
+          <Box sx={{ width: 40, height: 4, bgcolor: "rgba(0,0,0,0.2)", borderRadius: 2 }} />
+        </Box>
+        <Box sx={{ p: 2, bgcolor: "rgba(250,250,252,0.9)", height: planPanelHeight, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1.5 }}>現在の状態を保存 (プラン)</Typography>
+          
+          <Stack spacing={1} sx={{ mb: 2 }}>
+            {currentPlanId && (
+              <Button 
+                variant="outlined" 
+                color="primary"
+                onClick={() => savePlan()}
+                fullWidth
+                size="small"
+                sx={{ fontWeight: "bold" }}
+              >
+                現在読込中のプランを上書き保存
+              </Button>
+            )}
+            
+            <Stack direction="row" spacing={1}>
+              <TextField 
+                size="small" 
+                placeholder="プラン名 (任意)" 
+                value={newPlanName}
+                onChange={(e) => setNewPlanName(e.target.value)}
+                fullWidth 
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    savePlan(newPlanName, true);
+                    setNewPlanName("");
+                  }
+                }}
+              />
+              <Button 
+                variant="contained" 
+                onClick={() => {
+                  savePlan(newPlanName, true);
+                  setNewPlanName("");
+                }}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                新規保存
+              </Button>
+            </Stack>
+          </Stack>
+
+          <Typography variant="caption" sx={{ fontWeight: "bold", mb: 1, display: "block", color: "text.secondary" }}>保存されたプラン</Typography>
+          {plans.length === 0 && <Typography variant="caption" color="text.secondary">保存されたプランはありません</Typography>}
+          <List dense sx={{ flex: 1, overflow: "auto", p: 0 }}>
+            {plans.map((p) => {
+              const isActive = p.id === currentPlanId;
+              return (
+                <Box 
+                  key={p.id} 
+                  sx={{ 
+                    mb: 0.5, 
+                    border: isActive ? '2px solid' : '1px solid', 
+                    borderColor: isActive ? 'primary.main' : 'divider', 
+                    borderRadius: 1, 
+                    bgcolor: isActive ? 'primary.50' : 'background.paper', 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <ListItemButton onClick={() => loadPlan(p.id)} sx={{ py: 0.5 }}>
+                    <ListItemText 
+                        primary={
+                          <Typography variant="body2" sx={{ fontWeight: 'bold', color: isActive ? 'primary.main' : 'text.primary', display: 'flex', alignItems: 'center' }}>
+                            {p.name}
+                            {isActive && <Typography component="span" variant="caption" sx={{ ml: 1, px: 0.5, bgcolor: 'primary.main', color: 'white', borderRadius: 1, fontSize: '0.65rem' }}>読込中</Typography>}
+                          </Typography>
+                        }
+                        secondary={new Date(p.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 
+                        secondaryTypographyProps={{ variant: "caption", color: isActive ? 'primary.main' : 'text.secondary' }}
+                    />
+                  </ListItemButton>
+                  <IconButton size="small" color="error" onClick={() => deletePlan(p.id)} sx={{ mr: 0.5 }}>
+                      <DeleteOutline fontSize="small" />
+                  </IconButton>
+                </Box>
+              )
+            })}
+          </List>
+        </Box>
+
       </Drawer>
 
       {/* 家具選定ダイアログ */}

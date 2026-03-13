@@ -73,7 +73,6 @@ export default function FurnitureLayer({
 
       const needW = drawWidth + (clr.left ?? 0) + (clr.right ?? 0);
       const needH = drawHeight + (clr.front ?? 0) + (clr.back ?? 0);
-      if (needW > z.width || needH > z.height) return;
 
       const k = `${z.id}|${url}`;
       if (!gridByKey.has(k)) {
@@ -87,58 +86,31 @@ export default function FurnitureLayer({
       const grid = gridByKey.get(k);
       const placedList = ensurePlacedList();
 
-      // 既存のドラッグオーバーライド
-      const itemKey = `${z.id}:${i}:${url}`;
-      const ov = overridesApi.get(itemKey);
+      // ※スマート配置アルゴリズム（mockLayoutGenerator.js）で計算された
+      // pt.x, pt.y の座標をそのまま最優先で利用する。
+      // ただしユーザーによるドラッグ移動（overridesApi）があればそちらを優先。
+      let cx = ov?.cx ?? pt.x;
+      let cy = ov?.cy ?? pt.y;
 
-      // 近傍グリッドにスナップ＋クランプ
-      const snap = (v, o, s) => o + Math.round((v - o) / s) * s;
-      let cx = ov?.cx ?? snap(pt.x, grid.originX, grid.stepX);
-      let cy = ov?.cy ?? snap(pt.y, grid.originY, grid.stepY);
+      // ゾーン枠内に収まるようにだけ最低限クランプする
       ({ cx, cy } = clampBBoxIntoZone(cx, cy, drawWidth, drawHeight, clr, z));
-
-      // 重なり回避（近い候補を探索）
-      const fits = (xx, yy) => {
-        const bb = expandedBBox(xx, yy, drawWidth, drawHeight, clr);
-        if (bb.x < z.x || bb.y < z.y || bb.x + bb.width > z.x + z.width || bb.y + bb.height > z.y + z.height) return false;
-        for (const o of placedList) if (intersects(bb, o)) return false;
-        return true;
-      };
-
-      // 周辺候補
-      const candidates = [{ cx, cy }];
-      const maxSteps = 8;
-      for (let r=0; r<=maxSteps; r++) {
-        for (let c=-r; c<=r; c++) {
-          candidates.push({ cx: grid.originX + c*grid.stepX, cy: grid.originY + r*grid.stepY });
-          candidates.push({ cx: grid.originX + c*grid.stepX, cy: grid.originY - r*grid.stepY });
-        }
-      }
-
-      let pos = null;
-      for (const p of candidates) {
-        const cl = clampBBoxIntoZone(p.cx, p.cy, drawWidth, drawHeight, clr, z);
-        if (fits(cl.cx, cl.cy)) { pos = cl; break; }
-      }
-      if (!pos) return;
+      
+      let pos = { cx, cy };
 
       placedList.push(expandedBBox(pos.cx, pos.cy, drawWidth, drawHeight, clr));
 
       const dragBoundFunc = (p) => {
         const centerX = p.x + drawWidth/2;
         const centerY = p.y + drawHeight/2;
-        const sx = snap(centerX, grid.originX, grid.stepX);
-        const sy = snap(centerY, grid.originY, grid.stepY);
-        const cl = clampBBoxIntoZone(sx, sy, drawWidth, drawHeight, clr, z);
+        // ドラッグ時もグリッドスナップを一旦無効化し自由に動かせるようにする
+        const cl = clampBBoxIntoZone(centerX, centerY, drawWidth, drawHeight, clr, z);
         return { x: cl.cx - drawWidth/2, y: cl.cy - drawHeight/2 };
       };
 
       const onDragEnd = (e) => {
         const nx = e.target.x(), ny = e.target.y();
         const centerX = nx + drawWidth/2, centerY = ny + drawHeight/2;
-        const sx = snap(centerX, grid.originX, grid.stepX);
-        const sy = snap(centerY, grid.originY, grid.stepY);
-        const cl = clampBBoxIntoZone(sx, sy, drawWidth, drawHeight, clr, z);
+        const cl = clampBBoxIntoZone(centerX, centerY, drawWidth, drawHeight, clr, z);
         overridesApi.set(itemKey, { cx: cl.cx, cy: cl.cy }); // 保存
       };
 

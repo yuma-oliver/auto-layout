@@ -6,6 +6,8 @@ const useLayoutStore = create((set) => ({
   layoutItems: [],    // [{ zone_id, items: [...] }]
   selectedIds: [],    // 複数選択対応
   zoneSelections: {}, // { [zoneId]: { [imageUrl]: qty } }
+  plans: [],          // 保存されたプラン履歴 [{ id, name, timestamp, zones, layoutItems }]
+  currentPlanId: null, // 現在ロード/保存中のプランID
 
   // ======== Actions ========
 
@@ -101,6 +103,48 @@ const useLayoutStore = create((set) => ({
 
   // Entire State Replacement (Export/Import用など)
   setZones: (newZones) => set({ zones: newZones }),
+
+  // ======== Plan Management ========
+  savePlan: (name, forceNew = false) => set((state) => {
+    // If a plan is loaded and we're NOT forcing new and NO new name is provided, update the existing plan
+    if (state.currentPlanId && !forceNew && !name) {
+      return {
+        plans: state.plans.map(p => p.id === state.currentPlanId ? {
+          ...p,
+          timestamp: new Date().toISOString(),
+          zones: JSON.parse(JSON.stringify(state.zones)),
+          layoutItems: JSON.parse(JSON.stringify(state.layoutItems))
+        } : p)
+      };
+    }
+
+    // Otherwise, create a new plan
+    const newId = Date.now().toString() + "-" + Math.random().toString(36).substr(2, 9);
+    const newPlan = {
+      id: newId,
+      name: name || `プラン ${state.plans.length + 1}`,
+      timestamp: new Date().toISOString(),
+      zones: JSON.parse(JSON.stringify(state.zones)),
+      layoutItems: JSON.parse(JSON.stringify(state.layoutItems))
+    };
+    return { plans: [...state.plans, newPlan], currentPlanId: newId };
+  }),
+
+  loadPlan: (planId) => set((state) => {
+    const plan = state.plans.find((p) => p.id === planId);
+    if (!plan) return {};
+    return {
+      zones: JSON.parse(JSON.stringify(plan.zones)),
+      layoutItems: JSON.parse(JSON.stringify(plan.layoutItems)),
+      selectedIds: [],
+      currentPlanId: planId,
+    };
+  }),
+
+  deletePlan: (planId) => set((state) => ({
+    plans: state.plans.filter((p) => p.id !== planId),
+    currentPlanId: state.currentPlanId === planId ? null : state.currentPlanId
+  })),
 }));
 
 export default useLayoutStore;

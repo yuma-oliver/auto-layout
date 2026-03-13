@@ -139,23 +139,9 @@ export default function FurnitureLayoutLayer({
   const [, force] = useState(0);
   const [selectedItemKey, setSelectedItemKey] = useState(null);
 
-  // 並びパターンのシード（FASTAPI結果に依存）
-  const layoutSalt = useMemo(
-    () => stableHash(JSON.stringify(layoutItems || [])),
-    [layoutItems]
-  );
-
-  // FASTAPI送信（layoutItems 変化）時に手動オーバーライドをリセット
-  const layoutSaltRef = useRef(layoutSalt);
-  useEffect(() => {
-    if (layoutSaltRef.current !== layoutSalt) {
-      // 新しいレイアウト結果が来たので、手動調整は一旦リセット
-      overridesRef.current = new Map();
-      setSelectedItemKey(null);
-      layoutSaltRef.current = layoutSalt;
-      force((n) => n + 1);
-    }
-  }, [layoutSalt]);
+  // overridesRef は手動で動かした家具の位置情報を記録します。
+  // layoutItemsがリセットされる際にクリアしたい場合はここで制御できますが、
+  // 今回は特定ゾーンだけ再生成されたりするので全クリアはしない方針とします。
 
   // 位置更新用（rotation を壊さない）
   const setOverride = (key, pos) => {
@@ -206,20 +192,11 @@ export default function FurnitureLayoutLayer({
     };
   };
 
-  // ゾーンごとの“固定シード”を保持：
-  // - 初回：layoutSalt を初期値にして保存
-  // - 選択中ゾーン：layoutSalt 変化に追随して更新（= 配置が変わる）
-  // - 未選択ゾーン：前回のシードを維持（= 見た目維持）
-  const zoneSeedRef = useRef(new Map()); // zoneId -> seed
-  const ensureZoneSeed = (zoneId, isSelectedZone) => {
-    const has = zoneSeedRef.current.has(zoneId);
-    const nextSeed = stableHash(`${layoutSalt}:${zoneId}`);
-    if (!has) {
-      zoneSeedRef.current.set(zoneId, nextSeed);
-    } else if (isSelectedZone) {
-      zoneSeedRef.current.set(zoneId, nextSeed);
-    }
-    return zoneSeedRef.current.get(zoneId);
+  // ゾーンごとに固定されたシード（レイアウト生成ボタン等で更新される z.layoutSeed に依存）
+  // シードが明示的に更新されない限り、クリック選択（selectedIds の変化）では配置は変えない。
+  const getZoneSeed = (z) => {
+     if (z.layoutSeed != null) return stableHash(z.layoutSeed.toString());
+     return stableHash(z.id.toString());
   };
 
   if (!(Array.isArray(zones) && zones.length) || pxPerRealMm <= 0) return null;
@@ -227,8 +204,7 @@ export default function FurnitureLayoutLayer({
   const nodes = [];
 
   for (const z of zones) {
-    const isSelectedZone = selectedIds.includes(z.id);
-    const zoneSeed = ensureZoneSeed(z.id, isSelectedZone);
+    const zoneSeed = getZoneSeed(z);
     const rnd = makePRNG(zoneSeed);
 
     const assetsAll = z.furnitureAssets || [];
